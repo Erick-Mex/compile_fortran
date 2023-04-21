@@ -2,39 +2,119 @@ import ply.lex as lex
 import ply.yacc as yacc
 import sys
 
-tokens = (
-    'INT',
-    'FLOAT',
-    'NAME',
-    'PLUS',
-    'MINUS',
-    'DIVIDE',
-    'MULTIPLY',
-    'EQUALS'
-)
+reserved = {
+    'program' : 'PROGRAM',
+    'main' :    'MAIN',
+    'if' :      'IF',
+    'then' :    'THEN',
+    'else' :    'ELSE',
+    'do' :      'DO',
+    'while' :   'WHILE',
+    'end' :     'END',
+    'print' :   'PRINT',
+    'and' :     'AND',
+    'or' :      'OR',
+    'for' :     'FOR',
+    'int' :     'INT',
+    'real' :    'REAL',
+    'string' :  'STRING',
+    'bool' :    'BOOL',
+    'true' :    'TRUE',
+    'false' :   'FALSE'
+}
 
+tokens = [
+    'LPARENT', # (
+    'RPARENT', # )
+    'LCURLY', # {
+    'RCURLY', # }
+    'EQUALS', # ==
+    'MORETHAN', # >
+    'LESSTHAN', # <
+    'MOREEQUAL', # >=
+    'LESSEQUAL', # <=
+    'DIFFERENT', # !=
+    'PLUS', # +
+    'MINUS', # -
+    'DIVIDE', # /
+    'MULTIPLY', # *
+    'ASSIGN', # =
+    'DOT', # .
+    'COMMA', # ,
+    'DOUBLEPOINT', # :
+    'SEMICOLON', # ;
+    'COMMENT',
+    'RINT',
+    'RREAL',
+    'RBOOL',
+    'RSTRING',
+    'ID'
+]
+
+## =================================== Lexico ===================================
+
+tokens = tokens + list(reserved.values())
+
+# LLAVES
+t_LPARENT = r'\('
+t_RPARENT = r'\)'
+t_LCURLY = r'\{'
+t_RCURLY = r'\}'
+
+# LOGICOS
+t_EQUALS = r'\=\='
+t_MORETHAN = r"\>"
+t_LESSTHAN = r"\<"
+t_MOREEQUAL = r"\>\="
+t_LESSEQUAL = r"\<\="
+t_DIFFERENT = r"\!\="
+
+
+
+# ARITMETICOS
 t_PLUS = r'\+'
 t_MINUS = r'\-'
 t_MULTIPLY = r'\*'
 t_DIVIDE = r'\/'
-t_EQUALS = r'\='
+t_ASSIGN = r'\='
 
+# SIMBOLOS
+t_DOT = r"\."
+t_COMMA = r"\,"
+t_DOUBLEPOINT = r"\:\:"
+t_SEMICOLON = r"\;"
+
+t_ignore_COMMENT = r"\#.*"
 t_ignore = r' '
 
-def t_FLOAT(t):
+def t_RREAL(t):
     r'\d+\.\d+'
     t.value = float(t.value)
     return t
 
-def t_INT(t):
+def t_RINT(t):
     r'\d+'
     t.value = int(t.value)
     return t
 
-def t_NAME(t):
-    r'[a-zA-Z_][a-zA-Z_0-9]*'
-    t.type = 'NAME'
+def t_RSTRING(t):
+    r'\"[^\"]*\"'
+    t.value = str(t.value)
     return t
+
+def t_RBOOL(t):
+    r'true|false'
+    t.value = True if t.value == 'true' else False
+    return t
+
+def t_ID(t):
+    r'[a-zA-Z_][a-zA-Z_0-9]*'
+    t.type = reserved.get(t.value, 'ID')
+    return t
+
+def t_newline(t):
+    r'\n'
+    t.lexer.lineno += 1
 
 def t_error(t):
     print("Illegal characters!")
@@ -42,24 +122,62 @@ def t_error(t):
 
 lexer = lex.lex()
 
+## =================================== Lexico ===================================
+
+# Jerarquia de las operaciones
 precedence = (
     ('left', 'PLUS', 'MINUS'),
     ('left', 'MULTIPLY', 'DIVIDE')
 )
 
+# def p_init_program(p):
+#     '''
+#     program : PROGRAM MAIN calc END PROGRAM MAIN
+#     '''
+#     print(run(p[3]))
+
 def p_calc(p):
     '''
     calc : expression
-         | var_assign
+         | var
+         | print
          | empty
     '''
     print(run(p[1]))
+    # p[0] = p[1]
+
+def p_type_expression(p):
+    '''
+    type : INT
+         | REAL
+         | BOOL
+         | STRING
+    '''
+    p[0] = p[1]
+
+def p_var(p):
+    '''
+    var : type DOUBLEPOINT expression
+    '''
+    p[0] = ('var_declare', p[1], p[3])
 
 def p_var_assign(p):
     '''
-    var_assign : NAME EQUALS expression
+    var : ID ASSIGN expression 
     '''
     p[0] = ('=', p[1], p[3])
+
+def p_expression_var(p):
+    '''
+    expression : ID
+    '''
+    p[0] = p[1]
+
+def p_expression_parent(p):
+    '''
+    expression : LPARENT expression RPARENT
+    '''
+    p[0] = p[2]
 
 def p_expression(p):
     '''
@@ -71,18 +189,20 @@ def p_expression(p):
     # Build our tree.
     p[0] = (p[2], p[1], p[3])
 
-def p_expression_int_float(p):
+def p_expression_value(p):
     '''
-    expression : INT
-               | FLOAT
+    expression : RINT
+               | RREAL
+               | RSTRING
+               | RBOOL
     '''
     p[0] = p[1]
 
-def p_expression_var(p):
+def p_print(p):
     '''
-    expression : NAME
+    print : PRINT LPARENT expression RPARENT
     '''
-    p[0] = ('var', p[1])
+    p[0] = p[3]
 
 def p_error(p):
     print("Syntax error found!")
@@ -91,7 +211,7 @@ def p_empty(p):
     '''
     empty :
     '''
-    p[0] = None
+    p[0] = ''
 
 parser = yacc.yacc()
 
@@ -108,16 +228,33 @@ def run(p):
         elif p[0] == '/':
             return run(p[1]) / run(p[2])
         elif p[0] == '=':
-            env[p[1]] = run(p[2])
+            env[p[1]]["value"] = run(p[2])
             return ''
+        # ========== OPERACIONES CON VARIABLES ===========
         elif p[0] == 'var':
             if p[1] not in env:
-                return 'Undeclared variable found!'
-            else:
-                return env[p[1]]
+                return (f"Variable \"{p[1]}\" is not declared!")
+            return env[p[1]]["value"]
+        elif p[0] == 'var_declare':
+            if p[2] not in env:
+                env[p[2]] = {"type_data": p[1], "value": None}
+                print(env)
+                return ''
+            
+
+        # ======== OPERACIONES LOGICAS ===============
+
     else:
         return p
 
+
+# s = '''program main
+# print(12)
+# print(24)
+# print(25)
+# end program main
+# '''
+# parser.parse(s)
 while True:
     try:
         s = input('>> ')
