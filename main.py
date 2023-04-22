@@ -132,11 +132,19 @@ precedence = (
 
 # def p_init_program(p):
 #     '''
-#     program : PROGRAM MAIN calc END PROGRAM MAIN
+#     program : PROGRAM MAIN calcs END PROGRAM MAIN
 #     '''
 #     print(run(p[3]))
 
+# def p_operations(p):
+#     '''
+#     calcs : calcs calc
+#           | calc
+#     '''
+
+
 def p_calc(p):
+    # expression - for line to line execution
     '''
     calc : expression
          | var
@@ -157,7 +165,7 @@ def p_type_expression(p):
 
 def p_var(p):
     '''
-    var : type DOUBLEPOINT expression
+    var : type DOUBLEPOINT ID
     '''
     p[0] = ('var_declare', p[1], p[3])
 
@@ -171,7 +179,7 @@ def p_expression_var(p):
     '''
     expression : ID
     '''
-    p[0] = p[1]
+    p[0] = ('var', p[1])
 
 def p_expression_parent(p):
     '''
@@ -228,22 +236,46 @@ def run(p):
         elif p[0] == '/':
             return run(p[1]) / run(p[2])
         elif p[0] == '=':
-            env[p[1]]["value"] = run(p[2])
+            try:
+                type_value = type(run(p[2]))
+                type_data = env[p[1]]["type_data"]
+                value = run(p[2])
+            except:
+                raise NameError(f"Variable \'{p[1]}\' is not declared")
+
+            if type_value == int and type_data == "int":
+                env[p[1]]["value"] = value
+            elif type_value == float and type_data == "real":
+                env[p[1]]["value"] = value
+            elif type_value == str and type_data == "string":
+                env[p[1]]["value"] = value
+            elif type_value == bool and type_data == "bool":
+                env[p[1]]["value"] = value
+            else:
+                if type_value == int: 
+                    raise TypeError(f"Trying to assign a value of type 'int' in a variable of type '{type_data}'")
+                elif type_value == float: 
+                    raise TypeError(f"Trying to assign a value of type 'real' in a variable of type '{type_data}'")
+                elif type_value == str: 
+                    raise TypeError(f"Trying to assign a value of type 'string' in a variable of type '{type_data}'")
+                elif type_value == bool: 
+                    raise TypeError(f"Trying to assign a value of type 'bool' in a variable of type '{type_data}'")
             return ''
         # ========== OPERACIONES CON VARIABLES ===========
         elif p[0] == 'var':
             if p[1] not in env:
-                return (f"Variable \"{p[1]}\" is not declared!")
+                raise NameError(f"Variable \'{p[1]}\' is not declared")
             return env[p[1]]["value"]
         elif p[0] == 'var_declare':
             if p[2] not in env:
                 env[p[2]] = {"type_data": p[1], "value": None}
                 print(env)
                 return ''
-            
-
+            else:
+                raise AttributeError(f"Redefinition of the variable '{p[2]}'")
         # ======== OPERACIONES LOGICAS ===============
-
+    elif type(p) == str:
+        return p.strip('\"')
     else:
         return p
 
