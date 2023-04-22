@@ -130,17 +130,23 @@ precedence = (
     ('left', 'MULTIPLY', 'DIVIDE')
 )
 
-# def p_init_program(p):
-#     '''
-#     program : PROGRAM MAIN calcs END PROGRAM MAIN
-#     '''
-#     print(run(p[3]))
+def p_init_program(p):
+    '''
+    program : PROGRAM MAIN calcs END PROGRAM MAIN
+    '''
+    for item in p[3]:
+        execution = run(item)
+        if execution != None:
+            print(execution)
 
-# def p_operations(p):
-#     '''
-#     calcs : calcs calc
-#           | calc
-#     '''
+def p_operations(p):
+    '''
+    calcs : calc
+          | calcs calc
+    '''
+    if len(p) > 2:
+        p[1].append(p[2])
+    p[0] = [p[1]] if len(p) == 2 else p[1]
 
 
 def p_calc(p):
@@ -151,8 +157,8 @@ def p_calc(p):
          | print
          | empty
     '''
-    print(run(p[1]))
-    # p[0] = p[1]
+    # print(run(p[1]))
+    p[0] = p[1]
 
 def p_type_expression(p):
     '''
@@ -260,7 +266,7 @@ def run(p):
                     raise TypeError(f"Trying to assign a value of type 'string' in a variable of type '{type_data}'")
                 elif type_value == bool: 
                     raise TypeError(f"Trying to assign a value of type 'bool' in a variable of type '{type_data}'")
-            return ''
+            return None
         # ========== OPERACIONES CON VARIABLES ===========
         elif p[0] == 'var':
             if p[1] not in env:
@@ -269,8 +275,7 @@ def run(p):
         elif p[0] == 'var_declare':
             if p[2] not in env:
                 env[p[2]] = {"type_data": p[1], "value": None}
-                print(env)
-                return ''
+                return None
             else:
                 raise AttributeError(f"Redefinition of the variable '{p[2]}'")
         # ======== OPERACIONES LOGICAS ===============
@@ -280,16 +285,18 @@ def run(p):
         return p
 
 
-# s = '''program main
-# print(12)
-# print(24)
-# print(25)
-# end program main
-# '''
-# parser.parse(s)
-while True:
-    try:
-        s = input('>> ')
-    except EOFError:
-        break
+if __name__ == "__main__":
+    s = '''program main
+        int :: x
+        x = 12+2.2
+        print(x)
+        print(12)
+    end program main
+    '''
     parser.parse(s)
+    # while True:
+    #     try:
+    #         s = input('>> ')
+    #     except EOFError:
+    #         break
+    #     parser.parse(s)
