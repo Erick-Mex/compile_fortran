@@ -152,7 +152,7 @@ def p_operations(p):
 def p_calc(p):
     # expression - for line to line execution
     '''
-    calc : expression
+    calc : if_condition
          | var
          | print
          | empty
@@ -211,6 +211,24 @@ def p_expression_value(p):
                | RBOOL
     '''
     p[0] = p[1]
+
+def p_condition(p):
+    '''
+    condition : expression EQUALS expression
+              | expression MORETHAN expression
+              | expression LESSTHAN expression
+              | expression MOREEQUAL expression
+              | expression LESSEQUAL expressionQUALS 
+              | expression DIFFERENT expressionQUALS 
+    '''
+    p[0] = (p[2], p[1], p[3])
+
+def p_if_condition(p):
+    '''
+    if_condition : IF LPARENT condition RPARENT THEN calc END IF
+                 | IF LPARENT condition RPARENT THEN calc ELSE calc END IF
+    '''
+    print(p[2])
 
 def p_print(p):
     '''
