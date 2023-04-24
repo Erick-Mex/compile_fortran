@@ -69,8 +69,6 @@ t_MOREEQUAL = r"\>\="
 t_LESSEQUAL = r"\<\="
 t_DIFFERENT = r"\!\="
 
-
-
 # ARITMETICOS
 t_PLUS = r'\+'
 t_MINUS = r'\-'
@@ -88,12 +86,12 @@ t_ignore_COMMENT = r"\#.*"
 t_ignore = r' '
 
 def t_RREAL(t):
-    r'\d+\.\d+'
+    r'-?\d+\.\d+'
     t.value = float(t.value)
     return t
 
 def t_RINT(t):
-    r'\d+'
+    r'-?\d+'
     t.value = int(t.value)
     return t
 
@@ -127,27 +125,36 @@ lexer = lex.lex()
 # Jerarquia de las operaciones
 precedence = (
     ('left', 'PLUS', 'MINUS'),
-    ('left', 'MULTIPLY', 'DIVIDE')
+    ('left', 'MULTIPLY', 'DIVIDE'),
+    ('left', 'AND', 'OR')
 )
 
 def p_init_program(p):
     '''
     program : PROGRAM MAIN calcs END PROGRAM MAIN
     '''
+    # print(p[3])
     for item in p[3]:
         execution = run(item)
         if execution != None:
-            print(execution)
+            if type(execution) == list:
+                for i in execution:
+                    print(i)
+            else:
+                print(execution)
 
 def p_operations(p):
     '''
-    calcs : calc
-          | calcs calc
+    calcs : calcs calc
     '''
-    if len(p) > 2:
-        p[1].append(p[2])
-    p[0] = [p[1]] if len(p) == 2 else p[1]
+    p[1].append(p[2])
+    p[0] = p[1]
 
+def p_calcs_cal(p):
+    '''
+    calcs : calc
+    '''
+    p[0] = [p[1]]
 
 def p_calc(p):
     # expression - for line to line execution
@@ -190,6 +197,7 @@ def p_expression_var(p):
 def p_expression_parent(p):
     '''
     expression : LPARENT expression RPARENT
+               | LPARENT condition RPARENT
     '''
     p[0] = p[2]
 
@@ -218,17 +226,27 @@ def p_condition(p):
               | expression MORETHAN expression
               | expression LESSTHAN expression
               | expression MOREEQUAL expression
-              | expression LESSEQUAL expressionQUALS 
-              | expression DIFFERENT expressionQUALS 
+              | expression LESSEQUAL expression
+              | expression DIFFERENT expression
+              | expression AND condition
+              | expression OR condition
+              | expression
     '''
-    p[0] = (p[2], p[1], p[3])
+    # (operador, l_expresion, r_expression)
+    if len(p) > 3:
+        p[0] = (p[2], p[1], p[3])
+    else:
+        p[0] = p[1]
 
 def p_if_condition(p):
     '''
-    if_condition : IF LPARENT condition RPARENT THEN calc END IF
-                 | IF LPARENT condition RPARENT THEN calc ELSE calc END IF
+    if_condition : IF LPARENT condition RPARENT THEN calcs END IF
+                 | IF LPARENT condition RPARENT THEN calcs ELSE calcs END IF
     '''
-    print(p[2])
+    if p[3] == True or p[3] == False:
+        p[0] = ('if_unique', p[3], p[6])
+    else:
+        p[0] = ('if', p[3], p[6])
 
 def p_print(p):
     '''
@@ -237,7 +255,10 @@ def p_print(p):
     p[0] = p[3]
 
 def p_error(p):
-    print("Syntax error found!")
+    if p:
+        print("Syntax error at token", p.type, "(", p.value, ") at line", p.lineno, "position", p.lexpos)
+    else:
+        print("Syntax error at EOF")
 
 def p_empty(p):
     '''
@@ -297,6 +318,41 @@ def run(p):
             else:
                 raise AttributeError(f"Redefinition of the variable '{p[2]}'")
         # ======== OPERACIONES LOGICAS ===============
+        elif p[0] == "and":
+            return run(p[1]) and run(p[2])
+        elif p[0] == "or":
+            return run(p[1]) or run(p[2])
+        elif p[0] == ">":
+            return run(p[1]) > run(p[2])
+        elif p[0] == "<":
+            return run(p[1]) < run(p[2])
+        elif p[0] == ">=":
+            return run(p[1]) >= run(p[2])
+        elif p[0] == "<=":
+            return run(p[1]) <= run(p[2])
+        elif p[0] == "!=":
+            return run(p[1]) != run(p[2])
+        elif p[0] == "==":
+            return run(p[1]) == run(p[2])
+        elif p[0] == "if":
+            operator = p[1][0]
+            left = p[1][1]
+            right = p[1][2]
+            # print("op:", operator)
+            # print("izq:", left)
+            # print("der:", right, "\n")
+            # print("valor de izq: ", run(left))
+            # print("valor de der: ", run(right))
+
+            arr_operations_run = []
+            logic = run((operator, run(left), run(right)))
+            if logic:
+                for operation in p[2]:
+                    arr_operations_run.append(run(operation))
+            
+            return arr_operations_run
+        elif p[0] == "if_unique":
+            print(p)
     elif type(p) == str:
         return p.strip('\"')
     else:
@@ -306,15 +362,18 @@ def run(p):
 if __name__ == "__main__":
     s = '''program main
         int :: x
-        x = 12+2.2
-        print(x)
-        print(12)
+        bool :: y
+        x = 15
+        y = true
+        if (true or false) then
+            print(x)
+            print(12)
+            print(15)
+            print(12+2)
+        end if
     end program main
     '''
-    parser.parse(s)
-    # while True:
-    #     try:
-    #         s = input('>> ')
-    #     except EOFError:
-    #         break
-    #     parser.parse(s)
+    try:
+        parser.parse(s)
+    except SyntaxError as e:
+        print(f"SyntaxError: {e.msg} at line {e.lineno}, col {e.offset}: {e.text}")
