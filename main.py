@@ -39,7 +39,7 @@ tokens = [
     'DIVIDE', # /
     'MULTIPLY', # *
     'ASSIGN', # =
-    'DOT', # .
+#    'DOT', # .
     'COMMA', # ,
     'DOUBLEPOINT', # :
     'SEMICOLON', # ;
@@ -77,7 +77,7 @@ t_DIVIDE = r'\/'
 t_ASSIGN = r'\='
 
 # SIMBOLOS
-t_DOT = r"\."
+# t_DOT = r"\."
 t_COMMA = r"\,"
 t_DOUBLEPOINT = r"\:\:"
 t_SEMICOLON = r"\;"
@@ -129,17 +129,22 @@ precedence = (
     ('left', 'AND', 'OR')
 )
 
+def output_list(data):
+    if type(data) != list:
+        print(data)
+    else:
+        for item in data:
+            output_list(item)
+    
 def p_init_program(p):
     '''
     program : PROGRAM MAIN calcs END PROGRAM MAIN
     '''
-    # print(p[3])
     for item in p[3]:
         execution = run(item)
         if execution != None:
             if type(execution) == list:
-                for i in execution:
-                    print(i)
+                output_list(execution)
             else:
                 print(execution)
 
@@ -178,9 +183,22 @@ def p_type_expression(p):
 
 def p_var(p):
     '''
-    var : type DOUBLEPOINT ID
+    var : type DOUBLEPOINT multiple_var 
     '''
     p[0] = ('var_declare', p[1], p[3])
+
+def p_multiple(p):
+    '''
+    multiple_var : ID COMMA multiple_var
+    '''
+    p[3].append(p[1])
+    p[0] = p[3]
+
+def p_multiple_variables(p):
+    '''
+    multiple_var : ID
+    '''
+    p[0] = [p[1]]
 
 def p_var_assign(p):
     '''
@@ -217,6 +235,8 @@ def p_expression_value(p):
                | RREAL
                | RSTRING
                | RBOOL
+               | TRUE
+               | FALSE
     '''
     p[0] = p[1]
 
@@ -240,13 +260,24 @@ def p_condition(p):
 
 def p_if_condition(p):
     '''
-    if_condition : IF LPARENT condition RPARENT THEN calcs END IF
-                 | IF LPARENT condition RPARENT THEN calcs ELSE calcs END IF
+    if_condition : IF LPARENT condition RPARENT THEN LCURLY calcs RCURLY
+                 | IF LPARENT condition RPARENT THEN LCURLY calcs RCURLY ELSE LCURLY calcs RCURLY
     '''
-    if p[3] == True or p[3] == False:
-        p[0] = ('if_unique', p[3], p[6])
-    else:
-        p[0] = ('if', p[3], p[6])
+    if type(p[3]) == bool or len(p[3]) < 3:
+        if len(p) == 9:
+            p[0] = ('if_unique', p[3], p[7])
+        else:
+            p[0] = ('if_unique', p[3], p[7], p[11])
+    elif type(p[3]) == tuple:
+        if len(p) == 9:
+            p[0] = ('if', p[3], p[7])
+        else:
+            p[0] = ('if', p[3], p[7], p[11])
+
+# def p_while_loop(p):
+#     '''
+#     while_loop : WHILE LPARENT condition RPARENT DO LCURLY calcs RCURLY
+#     '''
 
 def p_print(p):
     '''
@@ -268,6 +299,13 @@ def p_empty(p):
 
 parser = yacc.yacc()
 
+def evaluate(instructions, operations):
+    for operation in instructions:
+        value = run(operation)
+        if value != None:
+            operations.append(value)
+    return operations
+             
 env = {}
 def run(p):
     global env
@@ -312,11 +350,14 @@ def run(p):
                 raise NameError(f"Variable \'{p[1]}\' is not declared")
             return env[p[1]]["value"]
         elif p[0] == 'var_declare':
-            if p[2] not in env:
-                env[p[2]] = {"type_data": p[1], "value": None}
-                return None
-            else:
-                raise AttributeError(f"Redefinition of the variable '{p[2]}'")
+            # print("p[1]:", p[1])
+            # print("p[2]:", p[2])
+            for i in p[2]:
+                if i not in env:
+                    env[i] = {"type_data": p[1], "value": None}
+                else:
+                    raise AttributeError(f"Redefinition of the variable '{p[2]}'")
+            return None
         # ======== OPERACIONES LOGICAS ===============
         elif p[0] == "and":
             return run(p[1]) and run(p[2])
@@ -338,39 +379,55 @@ def run(p):
             operator = p[1][0]
             left = p[1][1]
             right = p[1][2]
-            # print("op:", operator)
+            # print("\nop:", operator)
             # print("izq:", left)
-            # print("der:", right, "\n")
-            # print("valor de izq: ", run(left))
-            # print("valor de der: ", run(right))
+            # print("der:", right)
+            # print(len(p), "\n")
 
-            arr_operations_run = []
             logic = run((operator, run(left), run(right)))
-            if logic:
-                for operation in p[2]:
-                    arr_operations_run.append(run(operation))
+            operations = []
             
-            return arr_operations_run
+            # cuando el if no tiene else
+            if len(p) == 3:
+                if logic:
+                    return evaluate(p[2], operations)
+
+            # cuando el if tiene else
+            else:
+                if logic:
+                    return evaluate(p[2], operations)
+                else:
+                    return evaluate(p[3], operations)
         elif p[0] == "if_unique":
-            print(p)
+            operations = []
+            logic = run(p[1])
+
+            if len(p) == 3:
+                if logic:
+                    return evaluate(p[2], operations)
+            else:
+                if logic:
+                    return evaluate(p[2], operations)
+                else:
+                    return evaluate(p[3], operations)
     elif type(p) == str:
         return p.strip('\"')
     else:
         return p
 
-
 if __name__ == "__main__":
     s = '''program main
-        int :: x
-        bool :: y
-        x = 15
-        y = true
-        if (true or false) then
-            print(x)
-            print(12)
-            print(15)
-            print(12+2)
-        end if
+        int :: i,n,f,x
+        print("texto dump")
+        f = 10
+        x = 5
+        if (x>f) then
+        {
+            n = x + f
+        } else {
+            n = x - 4
+        }
+        print(n)
     end program main
     '''
     try:
