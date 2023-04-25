@@ -1,5 +1,6 @@
 import ply.lex as lex
 import ply.yacc as yacc
+import math
 import sys
 
 reserved = {
@@ -39,6 +40,7 @@ tokens = [
     'DIVIDE', # /
     'MULTIPLY', # *
     'ASSIGN', # =
+    'FACTORIAL', # !
 #    'DOT', # .
     'COMMA', # ,
     'DOUBLEPOINT', # :
@@ -81,6 +83,7 @@ t_ASSIGN = r'\='
 t_COMMA = r"\,"
 t_DOUBLEPOINT = r"\:\:"
 t_SEMICOLON = r"\;"
+t_FACTORIAL = r"\!"
 
 t_ignore_COMMENT = r"\#.*"
 t_ignore = r' '
@@ -126,7 +129,11 @@ lexer = lex.lex()
 precedence = (
     ('left', 'PLUS', 'MINUS'),
     ('left', 'MULTIPLY', 'DIVIDE'),
-    ('left', 'AND', 'OR')
+    ('left', 'AND', 'OR'),
+    ('left', 'FACTORIAL', 'PLUS'),
+    ('left', 'FACTORIAL', 'MINUS'),
+    ('left', 'FACTORIAL', 'MULTIPLY'),
+    ('left', 'FACTORIAL', 'DIVIDE'),
 )
 
 def output_list(data):
@@ -136,6 +143,15 @@ def output_list(data):
         for item in data:
             output_list(item)
     
+def evaluate(instructions: list, operations: list):
+    # print("+++++ operations function", instructions)
+    for operation in instructions:
+        value = run(operation)
+        if value != None:
+            operations.append(value)
+    # print("----- operations results", operations)
+    return operations
+
 def p_init_program(p):
     '''
     program : PROGRAM MAIN calcs END PROGRAM MAIN
@@ -165,6 +181,7 @@ def p_calc(p):
     # expression - for line to line execution
     '''
     calc : if_condition
+         | while_loop
          | var
          | print
          | empty
@@ -212,6 +229,12 @@ def p_expression_var(p):
     '''
     p[0] = ('var', p[1])
 
+def p_expression_conditional(p):
+    '''
+    expression : condition
+    '''
+    p[0] = p[1]
+
 def p_expression_parent(p):
     '''
     expression : LPARENT expression RPARENT
@@ -225,9 +248,13 @@ def p_expression(p):
                | expression DIVIDE expression
                | expression PLUS expression
                | expression MINUS expression
+               | expression FACTORIAL
     '''
     # Build our tree.
-    p[0] = (p[2], p[1], p[3])
+    if len(p) == 3:
+        p[0] = (p[2], p[1])
+    else:
+        p[0] = (p[2], p[1], p[3])
 
 def p_expression_value(p):
     '''
@@ -274,9 +301,15 @@ def p_if_condition(p):
         else:
             p[0] = ('if', p[3], p[7], p[11])
 
-# def p_while_loop(p):
+def p_while_loop(p):
+    '''
+    while_loop : WHILE LPARENT condition RPARENT DO LCURLY calcs RCURLY
+    '''
+    p[0] = ("while", p[3], p[7])
+
+# def p_for_loop(p):
 #     '''
-#     while_loop : WHILE LPARENT condition RPARENT DO LCURLY calcs RCURLY
+#     for_loop : FOR 
 #     '''
 
 def p_print(p):
@@ -284,6 +317,7 @@ def p_print(p):
     print : PRINT LPARENT expression RPARENT
     '''
     p[0] = p[3]
+
 
 def p_error(p):
     if p:
@@ -299,16 +333,11 @@ def p_empty(p):
 
 parser = yacc.yacc()
 
-def evaluate(instructions, operations):
-    for operation in instructions:
-        value = run(operation)
-        if value != None:
-            operations.append(value)
-    return operations
-             
 env = {}
+# operations = []
 def run(p):
     global env
+    # global operations
     if type(p) == tuple:
         if p[0] == '+':
             return run(p[1]) + run(p[2])
@@ -344,14 +373,22 @@ def run(p):
                 elif type_value == bool: 
                     raise TypeError(f"Trying to assign a value of type 'bool' in a variable of type '{type_data}'")
             return None
+        elif p[0] == "!":
+            value = run(p[1])
+            if type(value) != int:
+                raise TypeError(f"{type(value)} used in this method. An intenger must be used")
+            
+            return math.factorial(run(value))
         # ========== OPERACIONES CON VARIABLES ===========
         elif p[0] == 'var':
             if p[1] not in env:
                 raise NameError(f"Variable \'{p[1]}\' is not declared")
-            return env[p[1]]["value"]
+
+            value = env[p[1]]["value"]
+            if value == None:
+                raise NameError(f"name '{p[1]}' is not defined")
+            return value
         elif p[0] == 'var_declare':
-            # print("p[1]:", p[1])
-            # print("p[2]:", p[2])
             for i in p[2]:
                 if i not in env:
                     env[i] = {"type_data": p[1], "value": None}
@@ -379,55 +416,112 @@ def run(p):
             operator = p[1][0]
             left = p[1][1]
             right = p[1][2]
-            # print("\nop:", operator)
-            # print("izq:", left)
-            # print("der:", right)
-            # print(len(p), "\n")
-
             logic = run((operator, run(left), run(right)))
             operations = []
-            
             # cuando el if no tiene else
             if len(p) == 3:
-                if logic:
+                if logic: 
                     return evaluate(p[2], operations)
-
             # cuando el if tiene else
             else:
-                if logic:
+                if logic: 
                     return evaluate(p[2], operations)
-                else:
+                else: 
                     return evaluate(p[3], operations)
         elif p[0] == "if_unique":
             operations = []
             logic = run(p[1])
-
+            # operacion si no tiene ELSE 
             if len(p) == 3:
-                if logic:
+                if logic: 
                     return evaluate(p[2], operations)
+            # operacion si tiene  ELSE
             else:
-                if logic:
-                    return evaluate(p[2], operations)
-                else:
-                    return evaluate(p[3], operations)
+                return evaluate(p[2], operations) if logic else evaluate(p[3], operations)
+        elif p[0] == "while":
+            operations = []
+            # Si la condicional es un booleano o una variable
+            if type(p[1]) == bool or len(p[1]) < 3:
+                while run(p[1]):
+                    operations = evaluate(p[2], operations)
+                return operations
+            else:
+                operator = p[1][0]
+                while run((operator, run(p[1][1]), run(p[1][2]))):
+                    operations = evaluate(p[2], operations)
+                
+                return operations
     elif type(p) == str:
         return p.strip('\"')
     else:
         return p
 
+## ================= Test 1 ==================
+# program main
+# int :: i,n,f,x
+# print("texto dump")
+# f=5
+# x=1
+# for (x;x<f;x=x+1){
+# 	n = x + f
+# }
+# print(n)
+# end program main
+## ================= Test 2 ==================
+# program main
+# int :: i,n,f,x
+# print("texto dump")
+# f=1
+# x=5
+# if( x > f) then 
+# {
+# 	n = x + f
+# }else{
+# 	n = x - 4
+# }
+# print(n)
+# end program main
+# ================== Test 3 ================
+# program main
+# int :: i,n,f,x
+# print("texto dump")
+# f=1
+# x=5
+# while (x<f) do
+# {
+# 	x = f + 2
+# }
+# print(n)
+# end program main
+# ================== Test 4 ================
+# int :: i, n, f, x
+# bool :: z
+# print("text dump")
+# f = 3
+# x = 1
+# z = true
+# while(x < f) do
+# {
+#     x = x + 1
+#     if (x == 2) then {
+#         print("estoy dentro")
+#         if (true) then {
+#             print("dentro de un true")
+#             while (z) do {
+#                 print("dentro del while")
+#                 z = false
+#             }
+#         }
+#     }
+# }
+# print(f)
 if __name__ == "__main__":
     s = '''program main
-        int :: i,n,f,x
-        print("texto dump")
-        f = 10
-        x = 5
-        if (x>f) then
-        {
-            n = x + f
-        } else {
-            n = x - 4
-        }
-        print(n)
+        int :: i, n, f
+        bool :: z, x
+        f = 3
+        x = (2+4) > 5
+        print(((2+4) > 5) == x)
     end program main
     '''
     try:
