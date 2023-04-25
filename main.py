@@ -309,8 +309,10 @@ def p_while_loop(p):
 
 # def p_for_loop(p):
 #     '''
-#     for_loop : FOR 
+#     for_loop : FOR LPARENT var SEMICOLON condition SEMICOLON 
+#              | FOR LPARENT expression RPARENT
 #     '''
+
 
 def p_print(p):
     '''
@@ -378,7 +380,8 @@ def run(p):
             if type(value) != int:
                 raise TypeError(f"{type(value)} used in this method. An intenger must be used")
             
-            return math.factorial(run(value))
+            # return math.factorial(run(value))
+            return math.factorial(value)
         # ========== OPERACIONES CON VARIABLES ===========
         elif p[0] == 'var':
             if p[1] not in env:
@@ -412,6 +415,7 @@ def run(p):
             return run(p[1]) != run(p[2])
         elif p[0] == "==":
             return run(p[1]) == run(p[2])
+        # ============ LOOPS ============ 
         elif p[0] == "if":
             operator = p[1][0]
             left = p[1][1]
@@ -455,6 +459,12 @@ def run(p):
         return p.strip('\"')
     else:
         return p
+
+
+# Blood meridian
+# Los hermanos karamazov
+# 
+
 
 ## ================= Test 1 ==================
 # program main
@@ -517,11 +527,14 @@ def run(p):
 # print(f)
 if __name__ == "__main__":
     s = '''program main
-        int :: i, n, f
-        bool :: z, x
-        f = 3
-        x = (2+4) > 5
-        print(((2+4) > 5) == x)
+        int :: i
+        i = 3!
+        while(i) do {
+            print(i)
+            i = i - 1
+
+
+        }
     end program main
     '''
     try:
