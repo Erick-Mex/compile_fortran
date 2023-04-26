@@ -178,15 +178,14 @@ def p_calcs_cal(p):
     p[0] = [p[1]]
 
 def p_calc(p):
-    # expression - for line to line execution
     '''
     calc : if_condition
          | while_loop
+         | for_loop
          | var
          | print
          | empty
     '''
-    # print(run(p[1]))
     p[0] = p[1]
 
 def p_type_expression(p):
@@ -307,19 +306,25 @@ def p_while_loop(p):
     '''
     p[0] = ("while", p[3], p[7])
 
-# def p_for_loop(p):
-#     '''
-#     for_loop : FOR LPARENT var SEMICOLON condition SEMICOLON 
-#              | FOR LPARENT expression RPARENT
-#     '''
+def p_condition_for(p):
+    '''
+    for_condition : var SEMICOLON condition SEMICOLON var
+                  | expression SEMICOLON condition SEMICOLON var
+    '''
+    p[0] = (p[1], p[3], p[5])
 
+
+def p_for_loop(p):
+    '''
+    for_loop : FOR LPARENT for_condition RPARENT LCURLY calcs RCURLY
+    '''
+    p[0] = ("for_loop", p[3], p[6])
 
 def p_print(p):
     '''
     print : PRINT LPARENT expression RPARENT
     '''
     p[0] = p[3]
-
 
 def p_error(p):
     if p:
@@ -455,6 +460,22 @@ def run(p):
                     operations = evaluate(p[2], operations)
                 
                 return operations
+        elif p[0] == "for_loop":
+            # print(p)
+            # print("expresion del for: ", p[1])
+            # print("instrucciones: ", p[2])
+            # print("inicializacion: ", p[1][0])
+            # print("condicional: ", p[1][1])
+            # print("incremento: ", p[1][2])
+            init = run(p[1][0])
+            logic = run(p[1][1])
+            operations = []
+            while logic:
+                operations = evaluate(p[2], operations)
+                run(p[1][2])
+                logic = run(p[1][1])
+            return operations
+
     elif type(p) == str:
         return p.strip('\"')
     else:
@@ -527,14 +548,18 @@ def run(p):
 # print(f)
 if __name__ == "__main__":
     s = '''program main
-        int :: i
-        i = 3!
-        while(i) do {
-            print(i)
-            i = i - 1
-
-
+        int :: i,n,f,x
+        print("text dump")
+        
+        f = 5
+        for(x = 1; x < f; x = x + 1) {
+            print(x)
+            if(x == 4) then {
+                print("que onda")
+                n = x + f
+            }
         }
+        print(n)
     end program main
     '''
     try:
