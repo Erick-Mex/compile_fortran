@@ -1,0 +1,12 @@
+program main
+    int :: i,n,f,x
+    print("texto dump")
+    f=6
+    x=3
+    while (x<f) do
+    {
+        x = f + 1
+        n = x+1
+    }
+    print(n)
+end program main

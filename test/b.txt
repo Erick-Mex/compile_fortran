@@ -1,0 +1,13 @@
+program main
+    int :: i,n,f,x
+    print("texto dump")
+    f=1
+    x=5
+    if( x > f) then 
+    {
+        n = x + f
+    } else {
+        n = x - 4
+    }
+    print(n)
+end program main

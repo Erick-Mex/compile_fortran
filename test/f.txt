@@ -1,0 +1,16 @@
+program main
+    int :: x,y
+    bool :: z
+    real :: x
+    x = 1
+    y = 5
+    z = true
+    while(z) do {
+        print("que onda")
+        x = x + 1
+        if (x == y) then {
+            print("fin")
+            z = false
+        }
+    }
+end program main

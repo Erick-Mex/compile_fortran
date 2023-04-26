@@ -2,6 +2,7 @@ import ply.lex as lex
 import ply.yacc as yacc
 import math
 import sys
+import os
 
 reserved = {
     'program' : 'PROGRAM',
@@ -41,7 +42,6 @@ tokens = [
     'MULTIPLY', # *
     'ASSIGN', # =
     'FACTORIAL', # !
-#    'DOT', # .
     'COMMA', # ,
     'DOUBLEPOINT', # :
     'SEMICOLON', # ;
@@ -79,7 +79,6 @@ t_DIVIDE = r'\/'
 t_ASSIGN = r'\='
 
 # SIMBOLOS
-# t_DOT = r"\."
 t_COMMA = r"\,"
 t_DOUBLEPOINT = r"\:\:"
 t_SEMICOLON = r"\;"
@@ -130,10 +129,10 @@ precedence = (
     ('left', 'PLUS', 'MINUS'),
     ('left', 'MULTIPLY', 'DIVIDE'),
     ('left', 'AND', 'OR'),
-    # ('left', 'FACTORIAL', 'PLUS'),
-    # ('left', 'FACTORIAL', 'MINUS'),
-    # ('left', 'FACTORIAL', 'MULTIPLY'),
-    # ('left', 'FACTORIAL', 'DIVIDE'),
+    ('left', 'FACTORIAL', 'PLUS'),
+    ('left', 'FACTORIAL', 'MINUS'),
+    ('left', 'FACTORIAL', 'MULTIPLY'),
+    ('left', 'FACTORIAL', 'DIVIDE'),
 )
 
 def output_list(data):
@@ -226,12 +225,6 @@ def p_expression_var(p):
     '''
     p[0] = ('var', p[1])
 
-# def p_expression_conditional(p):
-#     '''
-#     expression : condition
-#     '''
-#     p[0] = p[1]
-
 def p_expression_parent(p):
     '''
     expression : LPARENT expression RPARENT
@@ -263,8 +256,6 @@ def p_expression_value(p):
     p[0] = p[1]
 
 def p_condition(p):
-    # expression AND condition
-    # expression OR condition
     '''
     condition : condition EQUALS condition 
               | condition MORETHAN condition
@@ -342,10 +333,8 @@ def p_empty(p):
 parser = yacc.yacc()
 
 env = {}
-# operations = []
 def run(p):
     global env
-    # global operations
     if type(p) == tuple:
         if p[0] == '+':
             return run(p[1]) + run(p[2])
@@ -386,7 +375,6 @@ def run(p):
             if type(value) != int:
                 raise TypeError(f"{type(value)} used in this method. An intenger must be used")
             
-            # return math.factorial(run(value))
             return math.factorial(value)
         # ========== OPERACIONES CON VARIABLES ===========
         elif p[0] == 'var':
@@ -402,7 +390,7 @@ def run(p):
                 if i not in env:
                     env[i] = {"type_data": p[1], "value": None}
                 else:
-                    raise AttributeError(f"Redefinition of the variable '{p[2]}'")
+                    raise AttributeError(f"Redefinition of the variable '{i} from '{env[i]['type_data']}' to '{p[1]}'")
             return None
         # ======== OPERACIONES LOGICAS ===============
         elif p[0] == "and":
@@ -452,7 +440,7 @@ def run(p):
         elif p[0] == "while":
             operations = []
             # Si la condicional es un booleano o una variable
-            if type(p[1]) == bool or len(p[1]) < 3:
+            if type(p[1]) != str and len(p[1]) < 3:
                 while run(p[1]):
                     operations = evaluate(p[2], operations)
                 return operations
@@ -463,12 +451,6 @@ def run(p):
                 
                 return operations
         elif p[0] == "for_loop":
-            # print(p)
-            # print("expresion del for: ", p[1])
-            # print("instrucciones: ", p[2])
-            # print("inicializacion: ", p[1][0])
-            # print("condicional: ", p[1][1])
-            # print("incremento: ", p[1][2])
             init = run(p[1][0])
             logic = run(p[1][1])
             operations = []
@@ -485,86 +467,21 @@ def run(p):
     else:
         return p
 
-
-# Blood meridian
-# Los hermanos karamazov
-# 
-
-
-## ================= Test 1 ==================
-# program main
-# int :: i,n,f,x
-# print("texto dump")
-# f=5
-# x=1
-# for (x;x<f;x=x+1){
-# 	n = x + f
-# }
-# print(n)
-# end program main
-## ================= Test 2 ==================
-# program main
-# int :: i,n,f,x
-# print("texto dump")
-# f=1
-# x=5
-# if( x > f) then 
-# {
-# 	n = x + f
-# }else{
-# 	n = x - 4
-# }
-# print(n)
-# end program main
-# ================== Test 3 ================
-# program main
-# int :: i,n,f,x
-# print("texto dump")
-# f=1
-# x=5
-# while (x<f) do
-# {
-# 	x = f + 2
-# }
-# print(n)
-# end program main
-# ================== Test 4 ================
-# int :: i, n, f, x
-# bool :: z
-# print("text dump")
-# f = 3
-# x = 1
-# z = true
-# while(x < f) do
-# {
-#     x = x + 1
-#     if (x == 2) then {
-#         print("estoy dentro")
-#         if (true) then {
-#             print("dentro de un true")
-#             while (z) do {
-#                 print("dentro del while")
-#                 z = false
-#             }
-#         }
-#     }
-# }
-# print(f)
 if __name__ == "__main__":
-    s = '''program main
-        # esto es un comentario
-        int :: i,n,f,x
-        print("texto dump")
-        f=8
-        x=5
-        if(x <f) then {
-            print("dentro")
-        }
-        print(x)
-        
-    end program main
-    '''
-    try:
-        parser.parse(s)
-    except SyntaxError as e:
-        print(f"SyntaxError: {e.msg} at line {e.lineno}, col {e.offset}: {e.text}")
+    list_file = [x for x in os.listdir("./test") if x.endswith(".txt")]
+    list_file.sort()
+    for idx, file in enumerate(list_file):
+        with open(f"./test/{file}", "r") as f:
+            s = f.read()
+            print("\n"*3)
+            print("="*15, f"Test {idx + 1}: '{str(file)}'", "="*15)
+            print(s)
+            print("\n")
+            try:
+                header_result ="="*15 + f" Resultado {idx + 1}: '{str(file)}' " + "="*15
+                print(header_result)
+                parser.parse(s)
+                print("="*len(header_result))
+                env = {}
+            except SyntaxError as e:
+                print(f"SyntaxError: {e.msg} at line {e.lineno}, col {e.offset}: {e.text}")
