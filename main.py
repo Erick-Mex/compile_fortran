@@ -323,8 +323,9 @@ def p_for_loop(p):
 def p_print(p):
     '''
     print : PRINT LPARENT expression RPARENT
+          | PRINT LPARENT condition RPARENT
     '''
-    p[0] = p[3]
+    p[0] = ('print', p[3])
 
 def p_error(p):
     if p:
@@ -476,7 +477,9 @@ def run(p):
                 run(p[1][2])
                 logic = run(p[1][1])
             return operations
-
+        elif p[0] == "print":
+            print(run(p[1]))
+            return None
     elif type(p) == str:
         return p.strip('\"')
     else:
@@ -554,9 +557,10 @@ if __name__ == "__main__":
         print("texto dump")
         f=8
         x=5
-        if(((x < f) == true) or false) then {
+        if(x <f) then {
             print("dentro")
         }
+        print(x)
         
     end program main
     '''
