@@ -130,10 +130,10 @@ precedence = (
     ('left', 'PLUS', 'MINUS'),
     ('left', 'MULTIPLY', 'DIVIDE'),
     ('left', 'AND', 'OR'),
-    ('left', 'FACTORIAL', 'PLUS'),
-    ('left', 'FACTORIAL', 'MINUS'),
-    ('left', 'FACTORIAL', 'MULTIPLY'),
-    ('left', 'FACTORIAL', 'DIVIDE'),
+    # ('left', 'FACTORIAL', 'PLUS'),
+    # ('left', 'FACTORIAL', 'MINUS'),
+    # ('left', 'FACTORIAL', 'MULTIPLY'),
+    # ('left', 'FACTORIAL', 'DIVIDE'),
 )
 
 def output_list(data):
@@ -144,12 +144,10 @@ def output_list(data):
             output_list(item)
     
 def evaluate(instructions: list, operations: list):
-    # print("+++++ operations function", instructions)
     for operation in instructions:
         value = run(operation)
         if value != None:
             operations.append(value)
-    # print("----- operations results", operations)
     return operations
 
 def p_init_program(p):
@@ -228,11 +226,11 @@ def p_expression_var(p):
     '''
     p[0] = ('var', p[1])
 
-def p_expression_conditional(p):
-    '''
-    expression : condition
-    '''
-    p[0] = p[1]
+# def p_expression_conditional(p):
+#     '''
+#     expression : condition
+#     '''
+#     p[0] = p[1]
 
 def p_expression_parent(p):
     '''
@@ -261,22 +259,24 @@ def p_expression_value(p):
                | RREAL
                | RSTRING
                | RBOOL
-               | TRUE
-               | FALSE
     '''
     p[0] = p[1]
 
 def p_condition(p):
+    # expression AND condition
+    # expression OR condition
     '''
-    condition : expression EQUALS expression
-              | expression MORETHAN expression
-              | expression LESSTHAN expression
-              | expression MOREEQUAL expression
-              | expression LESSEQUAL expression
-              | expression DIFFERENT expression
-              | expression AND condition
-              | expression OR condition
+    condition : condition EQUALS condition 
+              | condition MORETHAN condition
+              | condition LESSTHAN condition
+              | condition MOREEQUAL condition
+              | condition LESSEQUAL condition
+              | condition DIFFERENT condition
+              | condition AND condition
+              | condition OR condition
               | expression
+              | TRUE
+              | FALSE
     '''
     # (operador, l_expresion, r_expression)
     if len(p) > 3:
@@ -405,6 +405,7 @@ def run(p):
             return None
         # ======== OPERACIONES LOGICAS ===============
         elif p[0] == "and":
+            
             return run(p[1]) and run(p[2])
         elif p[0] == "or":
             return run(p[1]) or run(p[2])
@@ -548,18 +549,15 @@ def run(p):
 # print(f)
 if __name__ == "__main__":
     s = '''program main
+        # esto es un comentario
         int :: i,n,f,x
-        print("text dump")
-        
-        f = 5
-        for(x = 1; x < f; x = x + 1) {
-            print(x)
-            if(x == 4) then {
-                print("que onda")
-                n = x + f
-            }
+        print("texto dump")
+        f=8
+        x=5
+        if(((x < f) == true) or false) then {
+            print("dentro")
         }
-        print(n)
+        
     end program main
     '''
     try:
