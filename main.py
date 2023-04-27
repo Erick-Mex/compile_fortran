@@ -304,7 +304,6 @@ def p_condition_for(p):
     '''
     p[0] = (p[1], p[3], p[5])
 
-
 def p_for_loop(p):
     '''
     for_loop : FOR LPARENT for_condition RPARENT LCURLY calcs RCURLY
@@ -320,7 +319,8 @@ def p_print(p):
 
 def p_error(p):
     if p:
-        print("Syntax error at token", p.type, "(", p.value, ") at line", p.lineno, "position", p.lexpos)
+        # print("Syntax error at token", p.type, "(", p.value, ") at line", p.lineno, "position", p.lexpos)
+        raise SyntaxError(f"error at token '{p.value}' at line {p.lineno}")
     else:
         print("Syntax error at EOF")
 
@@ -345,12 +345,11 @@ def run(p):
         elif p[0] == '/':
             return run(p[1]) / run(p[2])
         elif p[0] == '=':
-            try:
-                type_value = type(run(p[2]))
-                type_data = env[p[1]]["type_data"]
-                value = run(p[2])
-            except:
+            if p[1] not in env:
                 raise NameError(f"Variable \'{p[1]}\' is not declared")
+            type_value = type(run(p[2]))
+            type_data = env[p[1]]["type_data"]
+            value = run(p[2])
 
             if type_value == int and type_data == "int":
                 env[p[1]]["value"] = value
@@ -373,8 +372,7 @@ def run(p):
         elif p[0] == "!":
             value = run(p[1])
             if type(value) != int:
-                raise TypeError(f"{type(value)} used in this method. An intenger must be used")
-            
+                raise TypeError(f"{type(value)} used in a factorial. An intenger must be used")
             return math.factorial(value)
         # ========== OPERACIONES CON VARIABLES ===========
         elif p[0] == 'var':
@@ -394,7 +392,6 @@ def run(p):
             return None
         # ======== OPERACIONES LOGICAS ===============
         elif p[0] == "and":
-            
             return run(p[1]) and run(p[2])
         elif p[0] == "or":
             return run(p[1]) or run(p[2])
@@ -471,9 +468,10 @@ if __name__ == "__main__":
     list_file = [x for x in os.listdir("./test") if x.endswith(".txt")]
     list_file.sort()
     for idx, file in enumerate(list_file):
+        lexer.lineno = 1
         with open(f"./test/{file}", "r") as f:
             s = f.read()
-            print("\n"*3)
+            print("\n")
             print("="*15, f"Test {idx + 1}: '{str(file)}'", "="*15)
             print(s)
             print("\n")
@@ -481,7 +479,25 @@ if __name__ == "__main__":
                 header_result ="="*15 + f" Resultado {idx + 1}: '{str(file)}' " + "="*15
                 print(header_result)
                 parser.parse(s)
-                print("="*len(header_result))
+                # print("="*len(header_result))
                 env = {}
             except SyntaxError as e:
-                print(f"SyntaxError: {e.msg} at line {e.lineno}, col {e.offset}: {e.text}")
+                print("SyntaxError:",e)
+                # print("="*len(header_result))
+                env = {}
+                continue
+            except NameError as e:
+                print("NameError:", e)
+                # print("="*len(header_result))
+                env = {}
+                continue
+            except TypeError as e:
+                print("TypeError:", e)
+                # print("="*len(header_result))
+                env = {}
+                continue
+            except AttributeError as e:
+                print("AttributeError:", e)
+                # print("="*len(header_result))
+                env = {}
+                continue

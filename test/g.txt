@@ -1,0 +1,11 @@
+program main
+    int :: x,y,z,w
+    x = 3!
+    y = (1+2)!
+    z = ((1+2) + 2)!
+    print(x)
+    print(y)
+    print(z)
+    w = 12!
+    print(w)
+end program main
