@@ -85,7 +85,7 @@ t_SEMICOLON = r"\;"
 t_FACTORIAL = r"\!"
 
 t_ignore_COMMENT = r"\#.*"
-t_ignore = r' '
+t_ignore = ' \t'
 
 def t_RREAL(t):
     r'-?\d+\.\d+'
@@ -479,25 +479,20 @@ if __name__ == "__main__":
                 header_result ="="*15 + f" Resultado {idx + 1}: '{str(file)}' " + "="*15
                 print(header_result)
                 parser.parse(s)
-                # print("="*len(header_result))
                 env = {}
             except SyntaxError as e:
                 print("SyntaxError:",e)
-                # print("="*len(header_result))
                 env = {}
                 continue
             except NameError as e:
                 print("NameError:", e)
-                # print("="*len(header_result))
                 env = {}
                 continue
             except TypeError as e:
                 print("TypeError:", e)
-                # print("="*len(header_result))
                 env = {}
                 continue
             except AttributeError as e:
                 print("AttributeError:", e)
-                # print("="*len(header_result))
                 env = {}
                 continue

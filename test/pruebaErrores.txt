@@ -1,0 +1,27 @@
+program main
+    int :: a,b,x,y,i,j
+
+    print("prueba semantica")
+
+    a = 5
+    b =  a + 3
+    x = b +5
+    y = x + a
+
+    if ((a>b) and (a*5+(b+4))) then {
+	    i = a*5+(b+4)
+	    print("caso true")
+	    print(a)
+    }else{
+	    if(y<x) then
+	    {
+	    	i = x * (b * y)
+	    	print(x)
+	    	print("if anidado")
+	    }else{
+    		print("ultimo caso")
+	    }
+    }
+
+    print(i)
+end program main

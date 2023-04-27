@@ -1,0 +1,11 @@
+program main
+int :: i,n,x
+print("factorial for")
+i=1
+n=5
+x = 1
+for (i;i<n;i=i+1){
+	x = x * i
+}
+print(x)
+end program main
